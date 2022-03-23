@@ -15,8 +15,12 @@ bool isPixelEmpty(cv::Vec3b color) {
     // TODO 1 реализуйте isPixelEmpty(color):
     // - верните true если переданный цвет - полностью черный (такие пиксели мы считаем пустыми)
     // - иначе верните false
+    if (color[0] == 0 & color[1] == 0 & color[2] == 0) {
+        return true;
+    } else {
+        return false;
+    }
     rassert(false, "325235141242153: You should do TODO 1 - implement isPixelEmpty(color)!");
-    return true;
 }
 
 void run(std::string caseName) {
@@ -72,8 +76,9 @@ void run(std::string caseName) {
 
     // Находим матрицу преобразования второй картинки в систему координат первой картинки
     cv::Mat H10 = cv::findHomography(points1, points0, cv::RANSAC, 3.0);
-    rassert(H10.size() == cv::Size(3, 3), 3482937842900059); // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
-                                                                             // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
+    rassert(H10.size() == cv::Size(3, 3),
+            3482937842900059); // см. документацию https://docs.opencv.org/4.5.1/d9/d0c/group__calib3d.html#ga4abc2ece9fab9398f2e560d53c8c9780
+    // "Note that whenever an H matrix cannot be estimated, an empty one will be returned."
 
     // создаем папку в которую будем сохранять результаты - lesson16/resultsData/ИМЯ_НАБОРА/
     std::string resultsDir = "lesson16/resultsData/";
@@ -131,6 +136,22 @@ void run(std::string caseName) {
 
     cv::Mat panoDiff(pano_rows, pano_cols, CV_8UC3, cv::Scalar(0, 0, 0));
     // TODO 2 вам надо заполнить panoDiff картинку так чтобы было четко ясно где pano0 картинка (объявлена выше) и pano1 картинка отличаются сильно, а где - слабо:
+    for (int i = 0; i < pano_cols; ++i) {
+        for (int j = 0; j < pano_rows; ++j) {
+            if (!(!isPixelEmpty(pano0.at<cv::Vec3b>(j,i)) && isPixelEmpty(pano1.at<cv::Vec3b>(j,i)))){
+                panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(255, 255, 255);
+            }
+            if (!(!isPixelEmpty(pano1.at<cv::Vec3b>(j,i)) && isPixelEmpty(pano0.at<cv::Vec3b>(j,i)))){
+                panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(255, 255, 255);
+            }
+            if (!(!isPixelEmpty(pano0.at<cv::Vec3b>(j,i)) && !isPixelEmpty(pano1.at<cv::Vec3b>(j,i)))){
+                panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(abs(pano1.at<cv::Vec3b>(j,i)[0]-pano0.at<cv::Vec3b>(j,i)[0]), abs(pano1.at<cv::Vec3b>(j,i)[1]-pano0.at<cv::Vec3b>(j,i)[1]), abs(pano1.at<cv::Vec3b>(j,i)[2]-pano0.at<cv::Vec3b>(j,i)[2]));
+            }
+            if (isPixelEmpty(pano0.at<cv::Vec3b>(j,i)) && isPixelEmpty(pano1.at<cv::Vec3b>(j,i))){
+                panoDiff.at<cv::Vec3b>(j, i) = cv::Vec3b(0, 0, 0);
+            }
+        }
+    }
     // сравните в этих двух картинках пиксели по одинаковым координатам (т.е. мы сверяем картинки) и покрасьте соответствующий пиксель panoDiff по этой логике:
     // - если оба пикселя пустые - проверяйте это через isPixelEmpty(color) (т.е. цвета черные) - результат тоже пусть черный
     // - если ровно один их пикселей пустой - результат пусть идеально белый

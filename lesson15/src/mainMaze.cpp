@@ -57,6 +57,7 @@ void run(int mazeNumber) {
             unsigned char green = color[1];
             unsigned char red = color[2];
 
+
             // TODO добавьте соотвтетсвующие этому пикселю ребра
         }
     }
@@ -93,6 +94,42 @@ void run(int mazeNumber) {
 
     // TODO сохраните картинку window на диск
 
+    distances[start] = 0;
+    std::vector<bool> used(nvertices, false);
+    std::vector<int> father(nvertices, -1);
+
+    while (!used[finish]) {
+        int n = -1;
+
+        for (int i = 0; i < nvertices; i++) {
+            if (!used[i] && (distances[i] < INF)) n = i;
+        }
+
+        if (n == -1) {
+            break;
+        }
+
+        used[n] = true;
+
+        for (auto edge : edges_by_vertex[n]) {
+            if (distances[edge.v] > distances[n] + edge.w) {
+                distances[edge.v] = distances[n] + edge.w;
+                father[edge.v] = n;
+            }
+        }
+    }
+
+    if (distances[finish] != INF) {
+        std::vector<int> path;
+        int place = finish;
+        while (place != -1) {
+            path.push_back(place);
+            place = father[place];
+        }
+        for (int i = path.size() - 1; i >= 0; i--) {
+            std::cout << (path[i] + 1) << " ";
+        }
+    }
     std::cout << "Finished!" << std::endl;
 
     // Показываем результат пока пользователь не насладиться до конца и не нажмет Escape
