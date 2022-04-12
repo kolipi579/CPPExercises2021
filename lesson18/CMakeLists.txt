@@ -9,8 +9,6 @@ find_package(OpenCV 4.5.1 REQUIRED)
 # 4) File->Settings->CMake, в поле "CMake options" впишите -DOpenCV_DIR=C:\...\opencv\build\x64\vc14\lib (замените троеточие на путь распаковки из шага 2)
 # 5) После нажатия OK обратите внимание что внизу в CMake окошке появились строки успеха включая что-то вроде "Found OpenCV: C:/.../opencv/build"
 
-set(SOURCES
-        )
 
 set(LIBRARIES
         libutils

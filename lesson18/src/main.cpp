@@ -93,9 +93,9 @@ void run(int caseNumber, std::string caseName) {
     cv::Mat shifts(original.rows, original.cols, CV_32SC2,
                    cv::Scalar(0, 0)); // матрица хранящая смещения, изначально заполнена парами нулей
     cv::Mat image = original; // текущая картинка
-    for (int p = 0; p < 100; p++) {
-        for (int j = 2; j < image.rows - 3; ++j) {
-            for (int i = 2; i < image.cols - 3; ++i) {
+    for (int g = 0; g < 200; g++) {
+        for (int j = 0; j < image.rows - 3; ++j) {
+            for (int i = 0; i < image.cols - 3; ++i) {
                 if (!isPixelMasked(mask, j, i)) continue; // пропускаем т.к. его менять не надо
                 cv::Vec2i dxy = shifts.at<cv::Vec2i>(j,
                                                      i); //смотрим какое сейчас смещение для этого пикселя в матрице смещения
@@ -106,23 +106,45 @@ void run(int caseNumber, std::string caseName) {
                 int currentQuality = estimateQuality(image, j, i, ny,
                                                      nx); // эта функция (создайте ее) считает насколько похож квадрат 5х5 приложенный центром к (i, j)
                 //на квадрат 5х5 приложенный центром к (nx, ny)
-                bool q = true;
-                int newrx = 0;
-                int newry = 0;
-                while (q) {
-                    newrx = random.next(2, image.cols - 3);
-                    newry = random.next(2, image.rows - 3);
-                    if (!isPixelMasked(image, newry, newrx)) {
-                        q = false;
+                bool f = true;
+                int ranx = 0;
+                int rany = 0;
+
+                while (f) {
+                    ranx = random.next(2, image.cols - 3);
+                    rany = random.next(2, image.rows - 3);
+                    if (!isPixelMasked(image, rany, ranx)) {
+                        f = false;
                     }
                 }
-                int randomQuality = estimateQuality(image, j, i, newry,
-                                                    newrx); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+                int randomQuality = estimateQuality(image, j, i, rany,
+                                                    ranx); // оцениваем насколько похоже будет если мы приложим эту случайную гипотезу которую только что выбрали
+
+                int qualityLeft = estimateQuality(image, j, i, j + shifts.at<cv::Vec2i>(j, i - 1)[0],
+                                                  i + shifts.at<cv::Vec2i>(j, i - 1)[1]);
+
+                int qualityUp = estimateQuality(image, j, i, j + shifts.at<cv::Vec2i>(j - 1, i)[0],
+                                                i + shifts.at<cv::Vec2i>(j - 1, i)[1]);
+
 
                 if (randomQuality < currentQuality || currentQuality == 0) {
-                    shifts.at<cv::Vec2i>(j, i)[0] = newry - j;
-                    shifts.at<cv::Vec2i>(j, i)[1] = newrx - i;
-                    image.at<cv::Vec3b>(j, i) = image.at<cv::Vec3b>(newry, newrx);
+                    shifts.at<cv::Vec2i>(j, i)[0] = rany - j;
+                    shifts.at<cv::Vec2i>(j, i)[1] = ranx - i;
+                    image.at<cv::Vec3b>(j, i) = image.at<cv::Vec3b>(rany, ranx);
+                }
+
+                if (qualityLeft < currentQuality) {
+                    currentQuality = qualityLeft;
+                    shifts.at<cv::Vec2i>(j, i) = shifts.at<cv::Vec2i>(j, i - 1);
+                    image.at<cv::Vec3b>(j, i) = image.at<cv::Vec3b>(j + shifts.at<cv::Vec2i>(j, i)[0],
+                                                                    i + shifts.at<cv::Vec2i>(j, i)[1]);
+                }
+
+                if (qualityUp < currentQuality) {
+                    currentQuality = qualityUp;
+                    shifts.at<cv::Vec2i>(j, i) = shifts.at<cv::Vec2i>(j - 1, i);
+                    image.at<cv::Vec3b>(j, i) = image.at<cv::Vec3b>(j + shifts.at<cv::Vec2i>(j, i)[0],
+                                                                    i + shifts.at<cv::Vec2i>(j, i)[1]);
                 }
             }
         }
@@ -135,11 +157,12 @@ int estimateQuality(cv::Mat image, int j, int i, int ny, int nx) {
     int sd0 = 0;
     int sd1 = 0;
     int sd2 = 0;
-    for (int k = -2; k < 3; ++k) {
-        for (int l = -2; l < 3; ++l) {
-            sd0 += abs(image.at<cv::Vec3b>(j + k, i + l)[0] - image.at<cv::Vec3b>(ny + k, nx + l)[0]);
-            sd1 += abs(image.at<cv::Vec3b>(j + k, i + l)[1] - image.at<cv::Vec3b>(ny + k, nx + l)[1]);
-            sd2 += abs(image.at<cv::Vec3b>(j + k, i + l)[2] - image.at<cv::Vec3b>(ny + k, nx + l)[2]);
+
+    for (int x = -2; x < 3; ++x) {
+        for (int s = -2; s < 3; ++s) {
+            sd0 += abs(image.at<cv::Vec3b>(j + x, i + s)[0] - image.at<cv::Vec3b>(ny + x, nx + s)[0]);
+            sd1 += abs(image.at<cv::Vec3b>(j + x, i + s)[1] - image.at<cv::Vec3b>(ny + x, nx + s)[1]);
+            sd2 += abs(image.at<cv::Vec3b>(j + x, i + s)[2] - image.at<cv::Vec3b>(ny + x, nx + s)[2]);
         }
     }
     return sd0 + sd1 + sd2;
@@ -150,11 +173,11 @@ int main() {
     try {
         run(1, "mic");
         // TODO протестируйте остальные случаи:
-        //        run(2, "flowers");
-        //        run(3, "baloons");
-        //        run(4, "brickwall");
-        //        run(5, "old_photo");
-        //        run(6, "your_data"); // TODO придумайте свой случай для тестирования (рекомендуется не очень большое разрешение, например 300х300)
+//        run(2, "flowers");
+//        run(3, "baloons");
+//        run(4, "brickwall");
+//        run(5, "old_photo");
+//        run(6, "your_data"); // TODO придумайте свой случай для тестирования (рекомендуется не очень большое разрешение, например 300х300)
 
         return 0;
     } catch (const std::exception &e) {
