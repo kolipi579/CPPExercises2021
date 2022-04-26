@@ -100,10 +100,10 @@ void run(int caseNumber, std::string caseName) {
     cv::Mat maska1 = mask.clone();
     const int PYRAMID1_MIN_SIZE = 20; // до какой поры уменьшать картинку? давайте уменьшать пока картинка больше 20 пикселей
     while (maska1.rows > PYRAMID1_MIN_SIZE &&
-    maska1.cols > PYRAMID1_MIN_SIZE) { // или пока больше (2 * размер окна для оценки качества)
+           maska1.cols > PYRAMID1_MIN_SIZE) { // или пока больше (2 * размер окна для оценки качества)
         pyramid1.insert(pyramid1.begin(),
-                       maska1); // мы могли бы воспользоваться push_back но мы хотим вставлять картинки в начало вектора
-                       cv::pyrDown(maska1, maska1); // эта функция уменьшает картинку в два раза
+                        maska1); // мы могли бы воспользоваться push_back но мы хотим вставлять картинки в начало вектора
+        cv::pyrDown(maska1, maska1); // эта функция уменьшает картинку в два раза
     }
 
     // TODO 10 создайте картинку хранящую относительные смещения - откуда брать донора для заплатки, см. подсказки про то как с нею работать на сайте
@@ -114,16 +114,30 @@ void run(int caseNumber, std::string caseName) {
     // TODO 15 теперь давайте заменять значение относительного смещения на новой только если новая случайная гипотеза - лучше старой, добавьте оценку "насколько смещенный патч 5х5 похож на патч вокруг пикселя если их наложить"
     //
     // Ориентировочный псевдокод-подсказка получившегося алгоритма:
-    cv::Mat shifts(original.rows, original.cols, CV_32SC2,
+    cv::Mat shifts1(original.rows, original.cols, CV_32SC2,
                    cv::Scalar(0, 0)); // матрица хранящая смещения, изначально заполнена парами нулей
+    cv::Mat shif = shifts1.clone();
+    std::vector<cv::Mat> pyramid2;
+    const int PYRAMID2_MIN_SIZE = 20;
+    int rowssh = shif.rows;
+    int colssh = shif.cols;
+    while (rowssh > PYRAMID2_MIN_SIZE &&
+           colssh > PYRAMID2_MIN_SIZE) {
+        cv::Mat shif2(rowssh, colssh, CV_32SC2,
+                      cv::Scalar(0, 0));
+        pyramid2.insert(pyramid2.begin(),
+                        shif2);
+        rowssh /= 2;
+        colssh /= 2;
+    }
     cv::Mat image = original; // текущая картинка
-    cv::Mat maska = mask;
     for (int h = 0; h < pyramid.size(); ++h) {
         image = pyramid[h];
-        maska = pyramid1[h];
-        for (int g = 0; g < 200; g++) {
-            for (int j = 0; j < image.rows - 3; ++j) {
-                for (int i = 0; i < image.cols - 3; ++i) {
+        cv::Mat maska = pyramid1[h];
+        cv::Mat shifts = pyramid2[h];
+        for (int g = 0; g < 100; g++) {
+            for (int j = 0; j < image.rows - 2; ++j) {
+                for (int i = 0; i < image.cols - 2; ++i) {
                     if (!isPixelMasked(mask, j, i)) continue; // пропускаем т.к. его менять не надо
                     cv::Vec2i dxy = shifts.at<cv::Vec2i>(j,
                                                          i); //смотрим какое сейчас смещение для этого пикселя в матрице смещения
@@ -139,8 +153,8 @@ void run(int caseNumber, std::string caseName) {
                     int rany = 0;
 
                     while (f) {
-                        ranx = random.next(2, image.cols - 3);
-                        rany = random.next(2, image.rows - 3);
+                        ranx = random.next(2, image.cols - 2);
+                        rany = random.next(2, image.rows - 2);
                         if (!isPixelMasked(image, rany, ranx)) {
                             f = false;
                         }
@@ -153,6 +167,29 @@ void run(int caseNumber, std::string caseName) {
                         shifts.at<cv::Vec2i>(j, i)[1] = ranx - i;
                         image.at<cv::Vec3b>(j, i) = image.at<cv::Vec3b>(rany, ranx);
                     }
+                }
+            }
+        }
+        if (h != pyramid.size() - 1) {
+            for (int i = 0; i < pyramid2[h].rows - 1; ++i) {
+                for (int j = 0; j < pyramid2[h].cols - 1; ++j) {
+                    if (2 * i + 1 <= pyramid2[h + 1].rows && 2 * j + 1 <= pyramid2[h + 1].cols) {
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j, 2 * i)[0] = pyramid2[h].at<cv::Vec2i>(j, i)[0] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j, 2 * i)[1] = pyramid2[h].at<cv::Vec2i>(j, i)[1] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j + 1, 2 * i)[0] = pyramid2[h].at<cv::Vec2i>(j, i)[0] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j + 1, 2 * i)[1] = pyramid2[h].at<cv::Vec2i>(j, i)[1] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j, 2 * i + 1)[0] = pyramid2[h].at<cv::Vec2i>(j, i)[0] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j, 2 * i + 1)[1] = pyramid2[h].at<cv::Vec2i>(j, i)[1] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j + 1, 2 * i + 1)[0] = pyramid2[h].at<cv::Vec2i>(j, i)[0] * 2;
+                        pyramid2[h + 1].at<cv::Vec2i>(2 * j + 1, 2 * i + 1)[1] = pyramid2[h].at<cv::Vec2i>(j, i)[1] * 2;
+                    }
+                }
+            }
+
+            for (int i = 0; i < pyramid2[h + 1].rows - 1; ++i) {
+                for (int j = 0; j < pyramid2[h + 1].cols - 1; ++j) {
+                    pyramid[h + 1].at<cv::Vec3b>(j, i) = pyramid[h + 1].at<cv::Vec3b>(
+                            j + pyramid2[h + 1].at<cv::Vec2i>(j, i)[0], i + pyramid2[h + 1].at<cv::Vec2i>(j, i)[1]);
                 }
             }
         }
@@ -221,9 +258,8 @@ void run(int caseNumber, std::string caseName) {
 //                }
 //            }
 //        }
-
-        cv::imwrite(resultsDir + "3mask.png", image);
     }
+    cv::imwrite(resultsDir + "3mask.png", image);
 }
 
 int estimateQuality(cv::Mat image, cv::Mat mask, int j, int i, int ny, int nx) {
@@ -234,14 +270,14 @@ int estimateQuality(cv::Mat image, cv::Mat mask, int j, int i, int ny, int nx) {
     for (int x = -2; x < 3; ++x) {
         for (int s = -2; s < 3; ++s) {
 
-            if (isPixelMasked(mask, ny + x, nx + s))
-                return 1000000000;
-
-            if (ny + x > image.cols || ny + x < 0 || nx + s < 0 || nx + s > image.rows)
-                return 1000000000;
-
-            if (j + x > image.cols || j + x < image.cols || i + s < image.rows || i + s > image.rows)
-                continue;
+//            if (isPixelMasked(mask, ny + x, nx + s))
+//                return 1000000000;
+//
+//            if (ny + x > image.cols || ny + x < 0 || nx + s < 0 || nx + s > image.rows)
+//                return 1000000000;
+//
+//            if (j + x > image.cols || j + x < image.cols || i + s < image.rows || i + s > image.rows)
+//                continue;
 
             sum1 += abs(image.at<cv::Vec3b>(j + x, i + s)[0] - image.at<cv::Vec3b>(ny + x, nx + s)[0]) *
                     abs(image.at<cv::Vec3b>(j + x, i + s)[0] - image.at<cv::Vec3b>(ny + x, nx + s)[0]);
