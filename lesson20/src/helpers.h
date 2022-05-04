@@ -6,6 +6,8 @@
 
 #define PI ((float) CV_PI)
 
+cv::String pentagonHack(int a);
+
 // Эта функция находит минимальное и максимальное вещественное значение в картинке
 // и создает копию этой картинке с нормализованными значениями (т.е. значения оказываются зажаты в диапазоне от 0 до 1)
 cv::Mat normalizedImage(const cv::Mat &img, float from, float to);

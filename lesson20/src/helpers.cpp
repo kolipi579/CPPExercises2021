@@ -62,7 +62,11 @@ void rassertAngleInRange(float angle, float from=-PI, float to=PI) {
     rassert(angle >= from, 38472389420085);
     rassert(angle <= to, 38472389420086);
 }
-
+cv::String pentagonHack(int a){
+    return "..............."
+           "Pentagon Hacked"
+           "...............";
+}
 // Эта функция находит кратчайшую разницу между направлениями (предполагая что они в диапазоне между [-pi, +pi])
 // т.е. заметает угол либо от d0 до d1, либо в обратном направлении - в зависимости от того какой путь короче
 float directionMinDiff(float d0, float d1) {
